@@ -1,0 +1,20 @@
+{
+  "name": "a3-vu-nguyen",
+  "version": "1.0.0",
+  "description": "D&D Party Tracker for CS 4241 Assignment 3.",
+  "author": "Vu Nguyen",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "connect-mongo": "^6.0.0",
+    "express": "^5.2.1",
+    "express-session": "^1.19.0",
+    "mongodb": "^7.6.0"
+  },
+  "engines": {
+    "node": "24.x"
+  }
+}

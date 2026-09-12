@@ -1,0 +1,117 @@
+@import url('https://fonts.googleapis.com/css2?family=MedievalSharp&display=swap');
+
+:root {
+  --color-bg: #432818;
+  --color-text: #FFE6A7;
+  --color-panel: #6F1D1B;
+  --color-accent: #BB9457;
+  --color-accent-hover: #99582A;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 30px;
+}
+
+h1 {
+  text-align: center;
+  color: var(--color-text);
+  font-family: 'MedievalSharp', cursive;
+  font-size: 4rem;
+}
+
+section {
+  margin-bottom: 30px;
+}
+
+#form-section {
+  background: var(--color-panel);
+  padding: 20px;
+  border-radius: 10px;
+}
+
+#character-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+label {
+  font-weight: bold;
+}
+
+input,
+select {
+  padding: 8px;
+  font-size: 1rem;
+  background: var(--color-text);
+  color: var(--color-bg);
+  border: 2px solid var(--color-accent);
+  border-radius: 5px;
+}
+
+button {
+  padding: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  border: none;
+  border-radius: 5px;
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+
+button:hover {
+  background: var(--color-accent-hover);
+  color: var(--color-text);
+}
+
+#submit-button {
+  grid-column: 1 / -1;
+  justify-self: start;
+  width: fit-content;
+  padding: 10px 20px;
+}
+
+.edit-button,
+.add-hp-button,
+.subtract-hp-button,
+.delete-button {
+  margin: 2px;
+}
+
+#character-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--color-panel);
+}
+
+#character-table th,
+#character-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-accent);
+}
+
+#character-table th {
+  font-weight: bold;
+  color: var(--color-text);
+  background: var(--color-accent-hover);
+}
+
+#character-table tbody tr:hover {
+  background: var(--color-accent-hover);
+}
