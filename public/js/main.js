@@ -95,7 +95,7 @@ const displayCharacters = function(characters) {
 
   editButtons.forEach(function(button) {
     button.onclick = function() {
-      const id = Number(button.dataset.id)
+      const id = button.dataset.id
 
       const character = characters.find(function(character) {
         return character.id === id
@@ -124,7 +124,7 @@ const displayCharacters = function(characters) {
         return
       }
 
-      const id = Number(button.dataset.id)
+      const id = button.dataset.id
       changeHp(id, amount)
     }
 
@@ -139,16 +139,24 @@ const displayCharacters = function(characters) {
         return
       }
 
-      const id = Number(button.dataset.id)
+      const id = button.dataset.id
       changeHp(id, -amount)
     }
   })
 }
 
 const loadCharacters = async function() {
-  const response = await fetch('/data')
-  const data = await response.json()
-  displayCharacters(data)
+  try {
+    const response = await fetch('/data')
+    const data = await response.json()
+    if (!response.ok) {
+      alert(data.error)
+      return
+    }
+    displayCharacters(data)
+  } catch {
+    alert('Unable to load characters. Check your connection and try again.')
+  }
 }
 
 const deleteCharacter = async function(id) {

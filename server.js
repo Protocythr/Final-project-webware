@@ -1,44 +1,8 @@
 const express = require('express')
 const path = require('path')
-const app = express()
+const { ObjectId, MongoError } = require('mongodb')
+const { connectDatabase } = require('./db')
 const port = 3000
-
-let nextId = 4
-
-const appdata = [
-  {
-    id: 1,
-    name: 'John Doe',
-    class: 'Paladin',
-    species: 'Human',
-    level: 5,
-    currHp: 40,
-    maxHp: 40,
-    status: 'Alive'
-  },
-
-  {
-    id: 2,
-    name: 'Jane Smith',
-    class: 'Wizard',
-    species: 'Elf',
-    level: 3,
-    currHp: 10,
-    maxHp: 20,
-    status: 'Bloodied'
-  },
-
-  {
-    id: 3,
-    name: 'Max',
-    class: 'Rogue',
-    species: 'Halfling',
-    level: 2,
-    currHp: 0,
-    maxHp: 15,
-    status: 'Dead'
-  }
-]
 
 function getStatus( currHp, maxHp ) {
   if ( currHp <= 0 ) {
@@ -52,150 +16,199 @@ function getStatus( currHp, maxHp ) {
   return 'Alive'
 }
 
-function parseCharacter(data, existingId = null) {
+function invalidInput(message) {
+  return Object.assign(new Error(message), { status: 400 })
+}
+
+function parseNumber(value, label) {
+  if (!['string', 'number'].includes(typeof value) || String(value).trim() === '' || !Number.isFinite(Number(value))) {
+    throw invalidInput(`${label} must be a valid number.`)
+  }
+  return Number(value)
+}
+
+function parseId(id) {
+  if (typeof id !== 'string' || !/^[a-f\d]{24}$/i.test(id)) {
+    throw invalidInput('Invalid character ID.')
+  }
+  return new ObjectId(id)
+}
+
+function parseCharacter(data) {
   const name = String(data.name || '').trim()
   const characterClass = String(data.class || '').trim()
   const species = String(data.species || '').trim()
-  const level = Number(data.level)
-  const currHp = Number(data.currHp)
-  const maxHp = Number(data.maxHp)
+  const level = parseNumber(data.level, 'Level')
+  const currHp = parseNumber(data.currHp, 'Current HP')
+  const maxHp = parseNumber(data.maxHp, 'Maximum HP')
 
   if (!name || !characterClass || !species) {
-    throw new Error('Name, class, and species are required.')
+    throw invalidInput('Name, class, and species are required.')
   }
 
   if (!Number.isInteger(level) || level < 1 || level > 20) {
-    throw new Error('Level must be an int from 1 to 20.')
+    throw invalidInput('Level must be an int from 1 to 20.')
   }
 
   if (!Number.isFinite(currHp) || !Number.isFinite(maxHp) || maxHp < 1) {
-    throw new Error('Current HP and max HP must be valid numbers.')
+    throw invalidInput('Current HP and max HP must be valid numbers.')
   }
 
   if (currHp < 0 || currHp > maxHp) {
-    throw new Error('Current HP must be between 0 and max HP.')
+    throw invalidInput('Current HP must be between 0 and max HP.')
   }
 
   return {
-      id: existingId,
       name,
       class: characterClass,
       species,
       level,
       currHp,
-      maxHp,
+      maxHp
+  }
+}
+
+function createApp(db) {
+  const app = express()
+  const characters = db.collection('characters')
+
+  async function listCharacters() {
+    const records = await characters.find({}).sort({ _id: 1 }).toArray()
+    return records.map(({ _id, name, class: characterClass, species, level, currHp, maxHp }) => ({
+      id: _id.toHexString(), name, class: characterClass, species, level, currHp, maxHp,
       status: getStatus(currHp, maxHp)
-  }
-}
-
-app.use(express.json({ limit: '16kb' }))
-
-function requireJsonObject(request, response, next) {
-  if (!request.is('application/json')) {
-    return response.status(415).json({ error: 'Content-Type must be application/json.' })
+    }))
   }
 
-  if (!request.body || typeof request.body !== 'object' || Array.isArray(request.body)) {
-    return response.status(400).json({ error: 'Request body must be a JSON object.' })
+  app.use(express.json({ limit: '16kb' }))
+
+  function requireJsonObject(request, response, next) {
+    if (!request.is('application/json')) {
+      return response.status(415).json({ error: 'Content-Type must be application/json.' })
+    }
+
+    if (!request.body || typeof request.body !== 'object' || Array.isArray(request.body)) {
+      return response.status(400).json({ error: 'Request body must be a JSON object.' })
+    }
+
+    next()
   }
 
-  next()
-}
-
-app.get('/data', (request, response) => {
-  response.json(appdata)
-})
-
-app.post('/add', requireJsonObject, (request, response) => {
-  let character
-  try {
-    character = parseCharacter(request.body)
-  } catch (error) {
-    return response.status(400).json({ error: error.message })
-  }
-
-  character.id = nextId++
-  appdata.push(character)
-  response.json(appdata)
-})
-
-app.post('/update', requireJsonObject, (request, response) => {
-  const id = Number(request.body.id)
-  const index = appdata.findIndex(character => character.id === id)
-  if (index === -1) {
-    return response.status(404).json({ error: 'Character not found.' })
-  }
-
-  try {
-    appdata[index] = parseCharacter(request.body, id)
-  } catch (error) {
-    return response.status(400).json({ error: error.message })
-  }
-  response.json(appdata)
-})
-
-app.post('/delete', requireJsonObject, (request, response) => {
-  const id = Number(request.body.id)
-  const index = appdata.findIndex(character => character.id === id)
-  if (index === -1) {
-    return response.status(404).json({ error: 'Character not found.' })
-  }
-
-  appdata.splice(index, 1)
-  response.json(appdata)
-})
-
-app.post('/hp', requireJsonObject, (request, response) => {
-  const id = Number(request.body.id)
-  const amount = Number(request.body.amount)
-  const character = appdata.find(character => character.id === id)
-  if (!character) {
-    return response.status(404).json({ error: 'Character not found.' })
-  }
-  if (!Number.isFinite(amount)) {
-    return response.status(400).json({ error: 'HP amount must be a number.' })
-  }
-
-  character.currHp = Math.max(0, Math.min(character.maxHp, character.currHp + amount))
-  character.status = getStatus(character.currHp, character.maxHp)
-  response.json(appdata)
-})
-
-// Known API paths always return JSON, including unsupported HTTP methods.
-app.all(['/data', '/add', '/update', '/delete', '/hp'], (request, response) => {
-  response.status(405).json({ error: 'Method not allowed.' })
-})
-
-app.use(express.static(path.join(__dirname, 'public')))
-
-app.use((request, response) => {
-  if (request.method !== 'GET' && request.method !== 'HEAD' ||
-      request.path === '/api' || request.path.startsWith('/api/') ||
-      request.is('application/json') || request.get('accept')?.includes('application/json')) {
-    return response.status(404).json({ error: 'API endpoint not found.' })
-  }
-  response.status(404).type('text').send('404 Error: File Not Found')
-})
-
-app.use((error, request, response, next) => {
-  if (response.headersSent) return next(error)
-
-  if (error.type === 'entity.parse.failed') {
-    return response.status(400).json({ error: 'Invalid JSON.' })
-  }
-  if (error.type === 'entity.too.large') {
-    return response.status(413).json({ error: 'Request body exceeds the 16 KB limit.' })
-  }
-
-  const status = error.status >= 400 && error.status < 500 ? error.status : 500
-  response.status(status).json({
-    error: status === 500 ? 'Internal server error.' : 'Invalid request.'
+  app.get('/data', async (request, response) => {
+    response.json(await listCharacters())
   })
-})
+
+  app.post('/add', requireJsonObject, async (request, response) => {
+    await characters.insertOne(parseCharacter(request.body))
+    response.json(await listCharacters())
+  })
+
+  app.post('/update', requireJsonObject, async (request, response) => {
+    const _id = parseId(request.body.id)
+    const fields = parseCharacter(request.body)
+    const result = await characters.updateOne({ _id }, { $set: fields })
+    if (result.matchedCount === 0) {
+      return response.status(404).json({ error: 'Character not found.' })
+    }
+
+    response.json(await listCharacters())
+  })
+
+  app.post('/delete', requireJsonObject, async (request, response) => {
+    const result = await characters.deleteOne({ _id: parseId(request.body.id) })
+    if (result.deletedCount === 0) {
+      return response.status(404).json({ error: 'Character not found.' })
+    }
+
+    response.json(await listCharacters())
+  })
+
+  app.post('/hp', requireJsonObject, async (request, response) => {
+    const _id = parseId(request.body.id)
+    const amount = parseNumber(request.body.amount, 'HP amount')
+    const result = await characters.updateOne({ _id }, [{
+      $set: { currHp: { $max: [0, { $min: ['$maxHp', { $add: ['$currHp', amount] }] }] } }
+    }])
+    if (result.matchedCount === 0) {
+      return response.status(404).json({ error: 'Character not found.' })
+    }
+    response.json(await listCharacters())
+  })
+
+  app.all(['/data', '/add', '/update', '/delete', '/hp'], (request, response) => {
+    response.status(405).json({ error: 'Method not allowed.' })
+  })
+
+  app.use(express.static(path.join(__dirname, 'public')))
+
+  app.use((request, response) => {
+    if (request.method !== 'GET' && request.method !== 'HEAD' ||
+        request.path === '/api' || request.path.startsWith('/api/') ||
+        request.is('application/json') || request.get('accept')?.includes('application/json')) {
+      return response.status(404).json({ error: 'API endpoint not found.' })
+    }
+    response.status(404).type('text').send('404 Error: File Not Found')
+  })
+
+  app.use((error, request, response, next) => {
+    if (response.headersSent) return next(error)
+
+    if (error.type === 'entity.parse.failed') {
+      return response.status(400).json({ error: 'Invalid JSON.' })
+    }
+    if (error.type === 'entity.too.large') {
+      return response.status(413).json({ error: 'Request body exceeds the 16 KB limit.' })
+    }
+
+    if (error instanceof MongoError) {
+      return response.status(503).json({ error: 'Database unavailable. Please try again shortly.' })
+    }
+
+    const status = error.status >= 400 && error.status < 500 ? error.status : 500
+    response.status(status).json({
+      error: status === 500 ? 'Internal server error.' : status === 400 ? error.message : 'Invalid request.'
+    })
+  })
+
+  return app
+}
+
+async function startServer() {
+  const { client, db } = await connectDatabase()
+  const app = createApp(db)
+  let server
+  try {
+    server = app.listen(process.env.PORT || port)
+  } catch {
+    await client.close()
+    throw new Error('Unable to start HTTP server. Check that PORT is valid and available.')
+  }
+  server.on('error', async () => {
+    console.error('Unable to start HTTP server. Check that PORT is valid and available.')
+    await client.close()
+    process.exitCode = 1
+  })
+  let stopping = false
+  const shutdown = () => {
+    if (stopping) return
+    stopping = true
+    const timeout = setTimeout(() => process.exit(1), 10000)
+    timeout.unref()
+    server.close(async () => {
+      await client.close()
+      clearTimeout(timeout)
+    })
+  }
+  process.once('SIGINT', shutdown)
+  process.once('SIGTERM', shutdown)
+}
 
 if (require.main === module) {
-  app.listen(process.env.PORT || port)
+  startServer().catch(error => {
+    console.error(error.message)
+    process.exitCode = 1
+  })
 }
 
-module.exports = app
+module.exports = { createApp }
 
