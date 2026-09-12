@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Log in | D&D Party Tracker</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <script src="/js/api.js" defer></script>
+    <script src="/js/login.js" defer></script>
+  </head>
+  <body>
+    <main class="container">
+      <h1>D&D Party Tracker</h1>
+      <p id="auth-status" role="status" aria-live="polite">Checking your session...</p>
+      <p id="auth-error" class="error-message" role="alert" hidden></p>
+      <button id="retry-auth" type="button" hidden>Retry connection</button>
+      <div id="auth-forms" class="auth-grid" hidden>
+        <section class="auth-panel" aria-labelledby="login-heading">
+          <h2 id="login-heading">Log in</h2>
+          <form id="login-form" class="auth-form">
+            <label for="login-username">Username</label>
+            <input id="login-username" name="username" autocomplete="username" required>
+            <label for="login-password">Password</label>
+            <input id="login-password" name="password" type="password" autocomplete="current-password" required>
+            <button type="submit">Log in</button>
+          </form>
+        </section>
+        <section class="auth-panel" aria-labelledby="register-heading">
+          <h2 id="register-heading">Create an account</h2>
+          <p>Registration creates a new account and logs you in. Your party starts empty.</p>
+          <form id="register-form" class="auth-form">
+            <label for="register-username">Username</label>
+            <input id="register-username" name="username" autocomplete="username" minlength="3" maxlength="32" pattern="[A-Za-z0-9_]{3,32}" aria-describedby="username-help" required>
+            <small id="username-help">Use 3–32 letters, numbers, or underscores. Usernames are not case-sensitive.</small>
+            <label for="register-password">Password</label>
+            <input id="register-password" name="password" type="password" autocomplete="new-password" minlength="8" maxlength="72" aria-describedby="password-help" required>
+            <small id="password-help">Use at least 8 characters.</small>
+            <button type="submit">Create account</button>
+          </form>
+        </section>
+      </div>
+      <noscript>Please enable JavaScript to log in and manage your party.</noscript>
+    </main>
+  </body>
+</html>

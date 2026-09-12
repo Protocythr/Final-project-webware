@@ -1,205 +1,159 @@
+const tracker = document.querySelector('#tracker')
+const form = document.querySelector('#character-form')
+const statusMessage = document.querySelector('#app-status')
+const errorMessage = document.querySelector('#app-error')
+const retryLoad = document.querySelector('#retry-load')
+const fields = { name: 'name', class: 'class', species: 'species', level: 'level', currHp: 'curr-hp', maxHp: 'max-hp' }
 let editingId = null
+let busy = false
 
-const submit = async function(event) {
-    event.preventDefault()
-
-    const name = document.querySelector('#name').value
-    const characterClass = document.querySelector('#class').value
-    const species = document.querySelector('#species').value
-    const level = document.querySelector('#level').value
-    const currHp = document.querySelector('#curr-hp').value
-    const maxHp = document.querySelector('#max-hp').value
-
-    const json = {
-        name: name,
-        class: characterClass,
-        species: species,
-        level: level,
-        currHp: currHp,
-        maxHp: maxHp
-    }
-
-    const endpoint = editingId === null ? '/add' : '/update'
-
-    if (editingId !== null) {
-      json.id = editingId
-    }
-
-    const body = JSON.stringify(json)
-
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: body
-    })
-
-    const data = await response.json()
-
-    if (!response.ok) {
-      alert(data.error)
-      return
-    }
-
-    editingId = null
-    document.querySelector('#character-form').reset()
-    document.querySelector('#submit-button').textContent = 'Add Character'
-
-    displayCharacters(data)
+function showError(message = '') {
+  errorMessage.textContent = message
+  errorMessage.hidden = !message
 }
 
-const displayCharacters = function(characters) {
+function setBusy(value) {
+  busy = value
+  tracker.setAttribute('aria-busy', String(value))
+  tracker.querySelectorAll('button, input, select').forEach(control => { control.disabled = value })
+}
+
+function resetEditor() {
+  editingId = null
+  form.reset()
+  document.querySelector('#form-heading').textContent = 'Add Character'
+  document.querySelector('#submit-button').textContent = 'Add Character'
+  document.querySelector('#cancel-edit').hidden = true
+}
+
+function editCharacter(character) {
+  if (busy) return
+  for (const [field, id] of Object.entries(fields)) document.getElementById(id).value = character[field]
+  editingId = character.id
+  document.querySelector('#form-heading').textContent = `Edit ${character.name}`
+  document.querySelector('#submit-button').textContent = 'Update Character'
+  document.querySelector('#cancel-edit').hidden = false
+  showError()
+  document.querySelector('#name').focus()
+}
+
+function displayCharacters(characters) {
   const list = document.querySelector('#character-list')
-  list.innerHTML = ''
-
-  characters.forEach(function(character) {
+  list.replaceChildren()
+  document.querySelector('#empty-party').hidden = characters.length !== 0
+  document.querySelector('#character-table').hidden = characters.length === 0
+  for (const character of characters) {
     const row = document.createElement('tr')
-
-    row.innerHTML = `
-      <td>${character.name}</td>
-      <td>${character.class}</td>
-      <td>${character.species}</td>
-      <td>${character.level}</td>
-      <td>${character.currHp}/${character.maxHp}</td>
-      <td>${character.status}</td>
-      <td>
-        <button class="edit-button" data-id="${character.id}">
-          Edit
-        </button>
-
-        <button class="delete-button" data-id="${character.id}">
-          Delete
-        </button>
-
-        <button class="add-hp-button" data-id="${character.id}">
-          Add HP
-        </button>
-
-        <button class="subtract-hp-button" data-id="${character.id}">
-          Subtract HP
-        </button>
-      </td>
-    `
-
+    for (const value of [character.name, character.class, character.species, character.level, `${character.currHp}/${character.maxHp}`, character.status]) {
+      const cell = document.createElement('td')
+      cell.textContent = value
+      row.appendChild(cell)
+    }
+    const actions = document.createElement('td')
+    for (const [label, className, action] of [
+      ['Edit', 'edit-button', () => editCharacter(character)],
+      ['Delete', 'delete-button', () => mutate('/delete', { id: character.id }, 'Character deleted.', () => {
+        if (editingId === character.id) resetEditor()
+      })],
+      ['Add HP', 'add-hp-button', () => adjustHp(character, 1)],
+      ['Subtract HP', 'subtract-hp-button', () => adjustHp(character, -1)]
+    ]) {
+      const button = document.createElement('button')
+      button.type = 'button'
+      button.className = className
+      button.textContent = label
+      button.setAttribute('aria-label', `${label}: ${character.name}`)
+      button.addEventListener('click', action)
+      actions.appendChild(button)
+    }
+    row.appendChild(actions)
     list.appendChild(row)
-  })
-
-  const buttons = document.querySelectorAll('.delete-button')
-
-  buttons.forEach(function(button) {
-    button.onclick = function() {
-      deleteCharacter(button.dataset.id)
-    }
-  })
-
-  const editButtons = document.querySelectorAll('.edit-button')
-
-  editButtons.forEach(function(button) {
-    button.onclick = function() {
-      const id = button.dataset.id
-
-      const character = characters.find(function(character) {
-        return character.id === id
-      })
-
-      document.querySelector('#name').value = character.name
-      document.querySelector('#class').value = character.class
-      document.querySelector('#species').value = character.species
-      document.querySelector('#level').value = character.level
-      document.querySelector('#curr-hp').value = character.currHp
-      document.querySelector('#max-hp').value = character.maxHp
-
-      editingId = character.id
-      document.querySelector('#submit-button').textContent = 'Update Character'
-    }
-
-  })
-
-  const addHpButtons = document.querySelectorAll('.add-hp-button')
-
-  addHpButtons.forEach(function(button) {
-    button.onclick = function() {
-      const amount = Number(prompt('Adding HP:'))
-
-      if (!Number.isFinite(amount) || amount <= 0) {
-        return
-      }
-
-      const id = button.dataset.id
-      changeHp(id, amount)
-    }
-
-  })
-
-  const subtractHpButtons = document.querySelectorAll('.subtract-hp-button')
-  subtractHpButtons.forEach(function(button) {
-    button.onclick = function() {
-      const amount = Number(prompt('Subtracting HP:'))
-
-      if (!Number.isFinite(amount) || amount <= 0) {
-        return
-      }
-
-      const id = button.dataset.id
-      changeHp(id, -amount)
-    }
-  })
+  }
 }
 
-const loadCharacters = async function() {
+async function mutate(endpoint, body, successMessage, onSuccess = () => {}) {
+  if (busy) return
+  setBusy(true)
+  showError()
+  statusMessage.textContent = 'Saving changes...'
   try {
-    const response = await fetch('/data')
-    const data = await response.json()
-    if (!response.ok) {
-      alert(data.error)
-      return
-    }
-    displayCharacters(data)
-  } catch {
-    alert('Unable to load characters. Check your connection and try again.')
+    const characters = await partyApi.post(endpoint, body)
+    displayCharacters(characters)
+    onSuccess()
+    statusMessage.textContent = successMessage
+  } catch (error) {
+    showError(error.message)
+    statusMessage.textContent = ''
+  } finally {
+    setBusy(false)
   }
 }
 
-const deleteCharacter = async function(id) {
-  const response = await fetch('/delete', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      id: id
-    })
-  })
-
-  const data = await response.json()
-
-  if (!response.ok) {
-    alert(data.error)
+function adjustHp(character, direction) {
+  if (busy) return
+  const answer = window.prompt(`${direction > 0 ? 'Add' : 'Subtract'} how much HP for ${character.name}?`)
+  if (answer === null) return
+  const amount = Number(answer)
+  if (!Number.isFinite(amount) || amount <= 0) {
+    showError('Enter an HP amount greater than zero.')
     return
   }
-
-  displayCharacters(data)
+  return mutate('/hp', { id: character.id, amount: direction * amount }, 'HP updated.')
 }
 
-const changeHp = async function(id, amount) {
-  const response = await fetch('/hp', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      id: id,
-      amount: amount
-    })
-  })
+form.addEventListener('submit', event => {
+  event.preventDefault()
+  const body = Object.fromEntries(Object.entries(fields).map(([field, id]) => [field, document.getElementById(id).value]))
+  const editing = editingId !== null
+  if (editing) body.id = editingId
+  mutate(editing ? '/update' : '/add', body, editing ? 'Character updated.' : 'Character added.', resetEditor)
+})
 
-  const data = await response.json()
+document.querySelector('#cancel-edit').addEventListener('click', () => {
+  resetEditor()
+  showError()
+  statusMessage.textContent = 'Editing canceled.'
+})
 
-  if (!response.ok) {
-    alert(data.error)
-    return
+document.querySelector('#logout-button').addEventListener('click', async () => {
+  if (busy) return
+  setBusy(true)
+  showError()
+  statusMessage.textContent = 'Logging out...'
+  try {
+    await partyApi.post('/auth/logout', {})
+    tracker.hidden = true
+    window.location.replace('/login.html')
+  } catch (error) {
+    showError(error.message)
+    statusMessage.textContent = ''
+    setBusy(false)
   }
+})
 
-  displayCharacters(data)
+async function initializeTracker() {
+  setBusy(true)
+  retryLoad.hidden = true
+  showError()
+  statusMessage.textContent = 'Checking your session...'
+  try {
+    const { user } = await partyApi.get('/auth/me')
+    document.querySelector('#username').textContent = user.username
+    tracker.hidden = false
+    statusMessage.textContent = 'Loading your party...'
+    displayCharacters(await partyApi.get('/data'))
+    statusMessage.textContent = 'Your party is up to date.'
+    setBusy(false)
+  } catch (error) {
+    if (error.status === 401) return
+    showError(error.message)
+    statusMessage.textContent = ''
+    retryLoad.hidden = false
+    document.querySelector('#logout-button').disabled = false
+    busy = false
+  }
 }
 
-window.onload = function() {
-  const form = document.querySelector('#character-form')
-  form.onsubmit = submit
-  loadCharacters()
-}
+retryLoad.addEventListener('click', initializeTracker)
+window.addEventListener('pageshow', event => { if (event.persisted) window.location.reload() })
+initializeTracker()

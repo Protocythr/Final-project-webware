@@ -115,3 +115,13 @@ button:hover {
 #character-table tbody tr:hover {
   background: var(--color-accent-hover);
 }
+
+[hidden] { display: none !important; }
+.auth-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 24px; }
+.auth-panel { background: var(--color-panel); border-radius: 10px; padding: 20px; }
+.auth-form { display: grid; gap: 12px; }
+.auth-form input { min-width: 0; }
+.account-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+.error-message { padding: 12px; border: 2px solid currentColor; }
+button:disabled { opacity: 0.6; cursor: wait; }
+:focus-visible { outline: 3px solid var(--color-text); outline-offset: 3px; }

@@ -13,6 +13,8 @@ async function connectDatabase({ uri = process.env.MONGODB_URI, name = process.e
     await db.command({ ping: 1 })
     await db.collection('users').createIndex({ username: 1 }, { unique: true })
     await db.collection('characters').createIndex({ ownerId: 1 })
+    await db.collection('sessions').createIndex({ expires: 1 }, { expireAfterSeconds: 0 })
+    await db.collection('authAttempts').createIndex({ expires: 1 }, { expireAfterSeconds: 0 })
     return { client, db }
   } catch {
     if (client) await client.close().catch(() => {})

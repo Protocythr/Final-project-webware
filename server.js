@@ -2,6 +2,7 @@ const express = require('express')
 const path = require('path')
 const { ObjectId, MongoError } = require('mongodb')
 const { connectDatabase } = require('./db')
+const { setupAuth, validateSessionSecret } = require('./auth')
 const port = 3000
 
 function getStatus( currHp, maxHp ) {
@@ -68,12 +69,12 @@ function parseCharacter(data) {
   }
 }
 
-function createApp(db) {
+function createApp(db, authOptions) {
   const app = express()
   const characters = db.collection('characters')
 
-  async function listCharacters() {
-    const records = await characters.find({}).sort({ _id: 1 }).toArray()
+  async function listCharacters(ownerId) {
+    const records = await characters.find({ ownerId }).sort({ _id: 1 }).toArray()
     return records.map(({ _id, name, class: characterClass, species, level, currHp, maxHp }) => ({
       id: _id.toHexString(), name, class: characterClass, species, level, currHp, maxHp,
       status: getStatus(currHp, maxHp)
@@ -81,6 +82,12 @@ function createApp(db) {
   }
 
   app.use(express.json({ limit: '16kb' }))
+  const { requireUser, requireCsrf } = setupAuth(app, db, authOptions)
+  app.use(['/data', '/add', '/update', '/delete', '/hp'], requireUser, (request, response, next) => {
+    response.set('Cache-Control', 'no-store')
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method)) return requireCsrf(request, response, next)
+    next()
+  })
 
   function requireJsonObject(request, response, next) {
     if (!request.is('application/json')) {
@@ -95,44 +102,44 @@ function createApp(db) {
   }
 
   app.get('/data', async (request, response) => {
-    response.json(await listCharacters())
+    response.json(await listCharacters(request.user._id))
   })
 
   app.post('/add', requireJsonObject, async (request, response) => {
-    await characters.insertOne(parseCharacter(request.body))
-    response.json(await listCharacters())
+    await characters.insertOne({ ...parseCharacter(request.body), ownerId: request.user._id })
+    response.json(await listCharacters(request.user._id))
   })
 
   app.post('/update', requireJsonObject, async (request, response) => {
     const _id = parseId(request.body.id)
     const fields = parseCharacter(request.body)
-    const result = await characters.updateOne({ _id }, { $set: fields })
+    const result = await characters.updateOne({ _id, ownerId: request.user._id }, { $set: fields })
     if (result.matchedCount === 0) {
       return response.status(404).json({ error: 'Character not found.' })
     }
 
-    response.json(await listCharacters())
+    response.json(await listCharacters(request.user._id))
   })
 
   app.post('/delete', requireJsonObject, async (request, response) => {
-    const result = await characters.deleteOne({ _id: parseId(request.body.id) })
+    const result = await characters.deleteOne({ _id: parseId(request.body.id), ownerId: request.user._id })
     if (result.deletedCount === 0) {
       return response.status(404).json({ error: 'Character not found.' })
     }
 
-    response.json(await listCharacters())
+    response.json(await listCharacters(request.user._id))
   })
 
   app.post('/hp', requireJsonObject, async (request, response) => {
     const _id = parseId(request.body.id)
     const amount = parseNumber(request.body.amount, 'HP amount')
-    const result = await characters.updateOne({ _id }, [{
+    const result = await characters.updateOne({ _id, ownerId: request.user._id }, [{
       $set: { currHp: { $max: [0, { $min: ['$maxHp', { $add: ['$currHp', amount] }] }] } }
     }])
     if (result.matchedCount === 0) {
       return response.status(404).json({ error: 'Character not found.' })
     }
-    response.json(await listCharacters())
+    response.json(await listCharacters(request.user._id))
   })
 
   app.all(['/data', '/add', '/update', '/delete', '/hp'], (request, response) => {
@@ -143,7 +150,7 @@ function createApp(db) {
 
   app.use((request, response) => {
     if (request.method !== 'GET' && request.method !== 'HEAD' ||
-        request.path === '/api' || request.path.startsWith('/api/') ||
+        request.path === '/api' || request.path.startsWith('/api/') || request.path.startsWith('/auth/') ||
         request.is('application/json') || request.get('accept')?.includes('application/json')) {
       return response.status(404).json({ error: 'API endpoint not found.' })
     }
@@ -174,6 +181,7 @@ function createApp(db) {
 }
 
 async function startServer() {
+  validateSessionSecret(process.env.SESSION_SECRET)
   const { client, db } = await connectDatabase()
   const app = createApp(db)
   let server
@@ -211,4 +219,3 @@ if (require.main === module) {
 }
 
 module.exports = { createApp }
-

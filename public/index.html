@@ -5,7 +5,9 @@
     <title>D&D Party Tracker</title>
     <meta charset="utf-8" />
 
-  <script src="js/main.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="js/api.js" defer></script>
+  <script src="js/main.js" defer></script>
   <link rel="stylesheet" href="css/main.css" />
 
   <!-- get rid of favicon error -->
@@ -18,8 +20,18 @@
 
     <h1>D&D Party Tracker</h1>
 
+    <p id="app-status" role="status" aria-live="polite">Checking your session...</p>
+    <p id="app-error" class="error-message" role="alert" hidden></p>
+    <button id="retry-load" type="button" hidden>Retry loading</button>
+    <noscript>Please enable JavaScript to manage your party.</noscript>
+    <main id="tracker" hidden>
+    <div class="account-bar">
+      <p>Signed in as <strong id="username"></strong></p>
+      <button id="logout-button" type="button">Log out</button>
+    </div>
+
     <section id="form-section">
-      <h2>Add Character</h2>
+      <h2 id="form-heading">Add Character</h2>
 
       <form id="character-form">
         <label for="name">Name</label>
@@ -69,11 +81,13 @@
         <button type="submit" id="submit-button">
           Add Character
         </button>
+        <button type="button" id="cancel-edit" hidden>Cancel editing</button>
       </form>
     </section>
 
     <section id="party-section">
       <h2>Party</h2>
+      <p id="empty-party" hidden>Your party is empty. Add your first character above.</p>
 
       <table id="character-table">
         <thead>
@@ -92,6 +106,8 @@
         </tbody>
       </table>
     </section>
+
+    </main>
 
   </div>
 
