@@ -1,8 +1,13 @@
 const { MongoClient } = require('mongodb')
 
-async function connectDatabase({ uri = process.env.MONGODB_URI, name = process.env.MONGODB_DB } = {}) {
+async function connectDatabase({
+  uri = process.env.MONGODB_URI,
+  name = process.env.MONGODB_DB
+} = {}) {
   if (!uri || !name) {
-    throw new Error('Set MONGODB_URI and MONGODB_DB in .env or the environment before starting the server.')
+    throw new Error(
+      'Set MONGODB_URI and MONGODB_DB in .env or the environment before starting the server.'
+    )
   }
 
   let client
@@ -18,7 +23,9 @@ async function connectDatabase({ uri = process.env.MONGODB_URI, name = process.e
     return { client, db }
   } catch {
     if (client) await client.close().catch(() => {})
-    throw new Error('Unable to initialize MongoDB. Check MONGODB_URI, MONGODB_DB, database access, and whether MongoDB is running.')
+    throw new Error(
+      'Unable to initialize MongoDB. Check MONGODB_URI, MONGODB_DB, database access, and whether MongoDB is running.'
+    )
   }
 }
 

@@ -12,7 +12,9 @@ window.partyApi = (() => {
         signal: AbortSignal.timeout(15000),
         headers: {
           Accept: 'application/json',
-          ...(body === undefined ? {} : { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken })
+          ...(body === undefined
+            ? {}
+            : { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken })
         },
         body: body === undefined ? undefined : JSON.stringify(body)
       })
@@ -25,7 +27,9 @@ window.partyApi = (() => {
         window.location.replace('/login.html?expired=1')
       }
       if (response.status === 403) csrfToken = ''
-      throw Object.assign(new Error(data.error || 'The request failed. Please try again.'), { status: response.status })
+      throw Object.assign(new Error(data.error || 'The request failed. Please try again.'), {
+        status: response.status
+      })
     }
     if (data.csrfToken) csrfToken = data.csrfToken
     return data

@@ -1,115 +1,156 @@
-<!doctype html>
+﻿<!doctype html>
 
 <html lang="en">
   <head>
     <title>D&D Party Tracker</title>
     <meta charset="utf-8" />
 
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="js/api.js" defer></script>
-  <script src="js/main.js" defer></script>
-  <link rel="stylesheet" href="css/main.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Manage your D&D party."
+    />
+    <script src="js/api.js" defer></script>
+    <script src="js/main.js" defer></script>
+    <link rel="stylesheet" href="/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="css/main.css" />
 
-  <!-- get rid of favicon error -->
-  <link rel="icon" href="data:;base64,iVBORw0KGgo=" />
-
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   </head>
 
   <body>
-    <div class="container">
+    <a class="visually-hidden-focusable btn btn-light m-2" href="#main-content"
+      >Skip to main content</a
+    >
+    <main id="main-content" class="container py-4 py-md-5" tabindex="-1">
+      <header class="mb-4">
+        <h1 class="display-5 fw-bold">D&D Party Tracker</h1>
+      </header>
 
-    <h1>D&D Party Tracker</h1>
+      <p id="app-status" role="status" aria-live="polite">Checking your session...</p>
+      <p id="app-error" class="alert alert-danger" role="alert" tabindex="-1" hidden></p>
+      <button id="retry-load" class="btn btn-outline-dark mb-3" type="button" hidden>
+        Retry loading
+      </button>
+      <noscript>Please enable JavaScript.</noscript>
+      <div id="tracker" hidden>
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+          <p class="mb-0">Signed in as <strong id="username"></strong></p>
+          <button id="logout-button" class="btn btn-outline-dark" type="button">Log out</button>
+        </div>
 
-    <p id="app-status" role="status" aria-live="polite">Checking your session...</p>
-    <p id="app-error" class="error-message" role="alert" hidden></p>
-    <button id="retry-load" type="button" hidden>Retry loading</button>
-    <noscript>Please enable JavaScript to manage your party.</noscript>
-    <main id="tracker" hidden>
-    <div class="account-bar">
-      <p>Signed in as <strong id="username"></strong></p>
-      <button id="logout-button" type="button">Log out</button>
-    </div>
+        <section
+          id="form-section"
+          class="card p-3 p-md-4 mb-4"
+          aria-labelledby="form-heading"
+        >
+          <h2 id="form-heading" class="h3">Add Character</h2>
+          <p id="character-help" class="text-body-secondary">
+            All fields are required. Level must be 1–20, and current HP cannot exceed maximum HP.
+          </p>
 
-    <section id="form-section">
-      <h2 id="form-heading">Add Character</h2>
+          <form id="character-form" class="row g-3" aria-describedby="character-help app-error">
+            <div class="col-12 col-sm-6 col-lg-4">
+              <label class="form-label" for="name">Name</label>
+              <input class="form-control" type="text" id="name" required />
+            </div>
 
-      <form id="character-form">
-        <label for="name">Name</label>
-        <input type="text" id="name" required>
+            <div class="col-12 col-sm-6 col-lg-4">
+              <label class="form-label" for="class">Class</label>
+              <select class="form-select" id="class" required>
+                <option value="">Choose a class</option>
+                <option>Barbarian</option>
+                <option>Bard</option>
+                <option>Cleric</option>
+                <option>Druid</option>
+                <option>Fighter</option>
+                <option>Monk</option>
+                <option>Paladin</option>
+                <option>Ranger</option>
+                <option>Rogue</option>
+                <option>Sorcerer</option>
+                <option>Warlock</option>
+                <option>Wizard</option>
+              </select>
+            </div>
 
-        <label for="class">Class</label>
-        <select id="class" required>
-          <option value="">Choose a class</option>
-          <option>Barbarian</option>
-          <option>Bard</option>
-          <option>Cleric</option>
-          <option>Druid</option>
-          <option>Fighter</option>
-          <option>Monk</option>
-          <option>Paladin</option>
-          <option>Ranger</option>
-          <option>Rogue</option>
-          <option>Sorcerer</option>
-          <option>Warlock</option>
-          <option>Wizard</option>
-        </select>
+            <div class="col-12 col-sm-6 col-lg-4">
+              <label class="form-label" for="species">Species</label>
+              <select class="form-select" id="species" required>
+                <option value="">Choose a species</option>
+                <option>Aasimar</option>
+                <option>Dragonborn</option>
+                <option>Dwarf</option>
+                <option>Elf</option>
+                <option>Gnome</option>
+                <option>Goliath</option>
+                <option>Halfling</option>
+                <option>Human</option>
+                <option>Orc</option>
+                <option>Tiefling</option>
+              </select>
+            </div>
 
-        <label for="species">Species</label>
-        <select id="species" required>
-          <option value="">Choose a species</option>
-          <option>Aasimar</option>
-          <option>Dragonborn</option>
-          <option>Dwarf</option>
-          <option>Elf</option>
-          <option>Gnome</option>
-          <option>Goliath</option>
-          <option>Halfling</option>
-          <option>Human</option>
-          <option>Orc</option>
-          <option>Tiefling</option>
-        </select>
+            <div class="col-12 col-sm-6 col-lg-4">
+              <label class="form-label" for="level">Level</label>
+              <input class="form-control" type="number" id="level" min="1" max="20" required />
+            </div>
 
-        <label for="level">Level</label>
-        <input type="number" id="level" min="1" max="20" required>
+            <div class="col-12 col-sm-6 col-lg-4">
+              <label class="form-label" for="curr-hp">Current HP</label>
+              <input class="form-control" type="number" id="curr-hp" min="0" required />
+            </div>
 
-        <label for="curr-hp">Current HP</label>
-        <input type="number" id="curr-hp" min="0" required>
+            <div class="col-12 col-sm-6 col-lg-4">
+              <label class="form-label" for="max-hp">Maximum HP</label>
+              <input class="form-control" type="number" id="max-hp" min="1" required />
+            </div>
 
-        <label for="max-hp">Maximum HP</label>
-        <input type="number" id="max-hp" min="1" required>
+            <div class="col-12 d-flex flex-wrap gap-2">
+              <button type="submit" id="submit-button" class="btn btn-primary">
+                Add Character
+              </button>
+              <button type="button" id="cancel-edit" class="btn btn-outline-secondary" hidden>
+                Cancel editing
+              </button>
+            </div>
+          </form>
+        </section>
 
-        <button type="submit" id="submit-button">
-          Add Character
-        </button>
-        <button type="button" id="cancel-edit" hidden>Cancel editing</button>
-      </form>
-    </section>
+        <section
+          id="party-section"
+          class="card p-3 p-md-4"
+          aria-labelledby="party-heading"
+        >
+          <h2 id="party-heading" class="h3">Party</h2>
+          <p id="empty-party" class="alert alert-secondary mb-0" hidden>
+            Your party is empty. Add your first character above.
+          </p>
 
-    <section id="party-section">
-      <h2>Party</h2>
-      <p id="empty-party" hidden>Your party is empty. Add your first character above.</p>
+          <div
+            class="table-responsive"
+            role="region"
+            aria-label="Party characters; scroll horizontally on small screens"
+            tabindex="0"
+          >
+            <table id="character-table" class="table table-striped table-hover align-middle mb-0">
+              <thead>
+                <tr>
+                  <th scope="col">Name</th>
+                  <th scope="col">Class</th>
+                  <th scope="col">Species</th>
+                  <th scope="col">Level</th>
+                  <th scope="col">HP</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
 
-      <table id="character-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Class</th>
-            <th>Species</th>
-            <th>Level</th>
-            <th>HP</th>
-            <th>Status</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-
-        <tbody id="character-list">
-        </tbody>
-      </table>
-    </section>
-
+              <tbody id="character-list"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
     </main>
-
-  </div>
-
   </body>
 </html>

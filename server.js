@@ -5,12 +5,10 @@ const { connectDatabase } = require('./db')
 const { setupAuth, validateSessionSecret } = require('./auth')
 const port = 3000
 
-function getStatus( currHp, maxHp ) {
-  if ( currHp <= 0 ) {
+function getStatus(currHp, maxHp) {
+  if (currHp <= 0) {
     return 'Dead'
-  } 
-  
-  else if ( currHp <= maxHp / 2 ) {
+  } else if (currHp <= maxHp / 2) {
     return 'Bloodied'
   }
 
@@ -22,7 +20,11 @@ function invalidInput(message) {
 }
 
 function parseNumber(value, label) {
-  if (!['string', 'number'].includes(typeof value) || String(value).trim() === '' || !Number.isFinite(Number(value))) {
+  if (
+    !['string', 'number'].includes(typeof value) ||
+    String(value).trim() === '' ||
+    !Number.isFinite(Number(value))
+  ) {
     throw invalidInput(`${label} must be a valid number.`)
   }
   return Number(value)
@@ -60,12 +62,12 @@ function parseCharacter(data) {
   }
 
   return {
-      name,
-      class: characterClass,
-      species,
-      level,
-      currHp,
-      maxHp
+    name,
+    class: characterClass,
+    species,
+    level,
+    currHp,
+    maxHp
   }
 }
 
@@ -76,18 +78,29 @@ function createApp(db, authOptions) {
   async function listCharacters(ownerId) {
     const records = await characters.find({ ownerId }).sort({ _id: 1 }).toArray()
     return records.map(({ _id, name, class: characterClass, species, level, currHp, maxHp }) => ({
-      id: _id.toHexString(), name, class: characterClass, species, level, currHp, maxHp,
+      id: _id.toHexString(),
+      name,
+      class: characterClass,
+      species,
+      level,
+      currHp,
+      maxHp,
       status: getStatus(currHp, maxHp)
     }))
   }
 
   app.use(express.json({ limit: '16kb' }))
   const { requireUser, requireCsrf } = setupAuth(app, db, authOptions)
-  app.use(['/data', '/add', '/update', '/delete', '/hp'], requireUser, (request, response, next) => {
-    response.set('Cache-Control', 'no-store')
-    if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method)) return requireCsrf(request, response, next)
-    next()
-  })
+  app.use(
+    ['/data', '/add', '/update', '/delete', '/hp'],
+    requireUser,
+    (request, response, next) => {
+      response.set('Cache-Control', 'no-store')
+      if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method))
+        return requireCsrf(request, response, next)
+      next()
+    }
+  )
 
   function requireJsonObject(request, response, next) {
     if (!request.is('application/json')) {
@@ -122,7 +135,10 @@ function createApp(db, authOptions) {
   })
 
   app.post('/delete', requireJsonObject, async (request, response) => {
-    const result = await characters.deleteOne({ _id: parseId(request.body.id), ownerId: request.user._id })
+    const result = await characters.deleteOne({
+      _id: parseId(request.body.id),
+      ownerId: request.user._id
+    })
     if (result.deletedCount === 0) {
       return response.status(404).json({ error: 'Character not found.' })
     }
@@ -133,9 +149,11 @@ function createApp(db, authOptions) {
   app.post('/hp', requireJsonObject, async (request, response) => {
     const _id = parseId(request.body.id)
     const amount = parseNumber(request.body.amount, 'HP amount')
-    const result = await characters.updateOne({ _id, ownerId: request.user._id }, [{
-      $set: { currHp: { $max: [0, { $min: ['$maxHp', { $add: ['$currHp', amount] }] }] } }
-    }])
+    const result = await characters.updateOne({ _id, ownerId: request.user._id }, [
+      {
+        $set: { currHp: { $max: [0, { $min: ['$maxHp', { $add: ['$currHp', amount] }] }] } }
+      }
+    ])
     if (result.matchedCount === 0) {
       return response.status(404).json({ error: 'Character not found.' })
     }
@@ -146,12 +164,20 @@ function createApp(db, authOptions) {
     response.status(405).json({ error: 'Method not allowed.' })
   })
 
+  app.get('/css/bootstrap.min.css', (request, response) => {
+    response.sendFile(require.resolve('bootstrap/dist/css/bootstrap.min.css'))
+  })
   app.use(express.static(path.join(__dirname, 'public')))
 
   app.use((request, response) => {
-    if (request.method !== 'GET' && request.method !== 'HEAD' ||
-        request.path === '/api' || request.path.startsWith('/api/') || request.path.startsWith('/auth/') ||
-        request.is('application/json') || request.get('accept')?.includes('application/json')) {
+    if (
+      (request.method !== 'GET' && request.method !== 'HEAD') ||
+      request.path === '/api' ||
+      request.path.startsWith('/api/') ||
+      request.path.startsWith('/auth/') ||
+      request.is('application/json') ||
+      request.get('accept')?.includes('application/json')
+    ) {
       return response.status(404).json({ error: 'API endpoint not found.' })
     }
     response.status(404).type('text').send('404 Error: File Not Found')
@@ -173,7 +199,12 @@ function createApp(db, authOptions) {
 
     const status = error.status >= 400 && error.status < 500 ? error.status : 500
     response.status(status).json({
-      error: status === 500 ? 'Internal server error.' : status === 400 ? error.message : 'Invalid request.'
+      error:
+        status === 500
+          ? 'Internal server error.'
+          : status === 400
+            ? error.message
+            : 'Invalid request.'
     })
   })
 
@@ -196,6 +227,7 @@ async function startServer() {
     await client.close()
     process.exitCode = 1
   })
+  
   let stopping = false
   const shutdown = () => {
     if (stopping) return
@@ -212,7 +244,7 @@ async function startServer() {
 }
 
 if (require.main === module) {
-  startServer().catch(error => {
+  startServer().catch((error) => {
     console.error(error.message)
     process.exitCode = 1
   })

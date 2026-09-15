@@ -7,6 +7,7 @@ let submitting = false
 function showAuthError(message = '') {
   authError.textContent = message
   authError.hidden = !message
+  if (message) authError.focus()
 }
 
 async function initializeLogin() {
@@ -37,7 +38,7 @@ for (const [id, endpoint, message] of [
   ['login-form', '/auth/login', 'Logging in...'],
   ['register-form', '/auth/register', 'Creating your account...']
 ]) {
-  document.getElementById(id).addEventListener('submit', async event => {
+  document.getElementById(id).addEventListener('submit', async (event) => {
     event.preventDefault()
     if (submitting) return
     const form = event.currentTarget
@@ -48,7 +49,9 @@ for (const [id, endpoint, message] of [
       return
     }
     submitting = true
-    authForms.querySelectorAll('input, button').forEach(control => { control.disabled = true })
+    authForms.querySelectorAll('input, button').forEach((control) => {
+      control.disabled = true
+    })
     showAuthError()
     authStatus.textContent = message
     try {
@@ -59,11 +62,15 @@ for (const [id, endpoint, message] of [
       authStatus.textContent = ''
     } finally {
       submitting = false
-      authForms.querySelectorAll('input, button').forEach(control => { control.disabled = false })
+      authForms.querySelectorAll('input, button').forEach((control) => {
+        control.disabled = false
+      })
     }
   })
 }
 
 retryAuth.addEventListener('click', initializeLogin)
-window.addEventListener('pageshow', event => { if (event.persisted) window.location.reload() })
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted) window.location.reload()
+})
 initializeLogin()
