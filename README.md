@@ -1,5 +1,7 @@
 # D&D Party Tracker
 
+run command is "npm start"
+
 [https://a3-vu-nguyen.onrender.com/login.html](https://a3-vu-nguyen.onrender.com/login.html)
 
 D&D Party Tracker is a web app for managing a Dungeons & Dragons adventuring party. Users can create an account and add, view, edit, and delete their own characters. Character status is automatically calculated by the server based on current and maximum HP.
